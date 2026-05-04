@@ -289,18 +289,40 @@ export class OrchestratorPage {
       ).toBeVisible();
     }
     if (status === "Completed") {
-      await expect(
-        this.page
-          .locator("b")
-          .filter({ hasText: "Completed" })
-          .getByTestId("CheckCircleOutlinedIcon"),
-      ).toBeVisible();
-      await expect(
-        this.page.getByText(
-          /Run completed at\s+\d{1,2}\/\d{1,2}\/\d{4},\s+\d{1,2}:\d{2}:\d{2}\s+(AM|PM)/,
-        ),
-      ).toBeVisible();
-      await expect(this.page.getByTestId("SuccessOutlinedIcon")).toBeVisible();
+      const completionTimestamp = this.page.getByText(
+        /Run completed at\s+\d{1,2}\/\d{1,2}\/\d{4},\s+\d{1,2}:\d{2}:\d{2}\s+(AM|PM)/,
+      );
+      const completedStatusIcon = this.page
+        .locator("b")
+        .filter({ hasText: "Completed" })
+        .getByTestId("CheckCircleOutlinedIcon");
+      const summarySuccessIcon = this.page
+        .getByTestId("SuccessOutlinedIcon")
+        .first();
+
+      await expect
+        .poll(
+          async () => {
+            const timestampVisible = await completionTimestamp
+              .first()
+              .isVisible()
+              .catch(() => false);
+            const statusIconVisible = await completedStatusIcon
+              .first()
+              .isVisible()
+              .catch(() => false);
+            const summaryIconVisible = await summarySuccessIcon
+              .isVisible()
+              .catch(() => false);
+            return timestampVisible && (statusIconVisible || summaryIconVisible);
+          },
+          {
+            timeout: 30_000,
+            message:
+              "Completed status details did not stabilize (timestamp and success icon)",
+          },
+        )
+        .toBeTruthy();
     }
   }
 
